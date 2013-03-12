@@ -93,6 +93,17 @@
                                           (max 0 (- (length new-lst)
                                                     (brute-lru-cap a-lru)))))]))
 
+(: brute-remove! (All (K V X) ((brute-lru K V) K -> Void)))
+(define (brute-remove! a-lru k)
+  (define lst (brute-lru-elts a-lru))
+  (cond [(assoc k lst)
+         =>
+         (lambda (pair)
+           (set-brute-lru-elts! a-lru (remq pair lst)))]
+        [else
+         (void)]))
+
+
 (: brute-keys (All (K V) ((brute-lru K V) -> (Listof K))))           
 (define (brute-keys a-lru)
   (define lst (brute-lru-elts a-lru))
@@ -100,36 +111,60 @@
          (car p))
        lst))
 
+(: brute-items (All (K V) ((brute-lru K V) -> (Listof (Pair K V)))))
+(define (brute-items a-lru)
+  (brute-lru-elts a-lru))
+
 
 (: fuzz-keys (Listof String))
 (define fuzz-keys (build-list 10 (lambda (i) (format "key~a" i))))
 
 (: fuzz-vals (Listof String))
-(define fuzz-vals (build-list 10 (lambda (i) (format "key~a" i))))
+(define fuzz-vals (build-list 10 (lambda (i) (format "val~a" i))))
 
 (: fuzz (Natural -> Void))
 ;; Take our lru and a brute lru, do a random operation, and check
 ;; that they have the same content.  Iterate.
 (define (fuzz cap)
-  (: real-lru (Lru String String))
-  (define real-lru (make-lru cap))
+  (: a-lru (Lru String String))
+  (define a-lru (make-lru cap))
   
   (: b-lru (brute-lru String String))
   (define b-lru (brute-lru cap '()))
   
   (define (same?)
-    (and (equal? (lru-keys real-lru)
+    (and (equal? (lru-keys a-lru)
                  (brute-keys b-lru))
-         (for/and: : Boolean ([k : String (lru-keys real-lru)])
-           (equal? (lru-ref real-lru k 
-                            (lambda () (error 'lookup)))
-                   (brute-ref b-lru k
-                              (lambda () (error 'lookup)))))))
+         (equal? (lru-items a-lru)
+                 (brute-items b-lru))))
   
-  (for ([i 10000])
+  (for ([i 100])
     (check-true (same?))
-    (void)))
+    (case (random-choice '(set get rem))
+      [(set)
+       (define k (random-choice fuzz-keys))
+       (define v (random-choice fuzz-vals))
+       (lru-set! a-lru k v)
+       (brute-set! b-lru k v)]
+      [(get)
+       (define k (random-choice fuzz-keys))
+       (check-equal? (lru-ref a-lru k (lambda () #f))
+                     (brute-ref b-lru k (lambda () #f)))]
+      [(rem)
+       (define k (random-choice fuzz-keys))
+       (lru-remove! a-lru k)
+       (brute-remove! b-lru k)]
+      [else
+       (error 'huh?)])))
 
-choose
-(for ([i 10])
-  (fuzz i))
+
+(: random-choice (All (X) ((Listof X) -> X)))
+;; Choose a random item.
+(define (random-choice elts)
+  (list-ref elts (random (length elts))))
+
+
+(printf "Running fuzzer.  This will take a few seconds.\n")
+(for ([repeat 1000])
+  (for ([cap 5])
+    (fuzz cap)))

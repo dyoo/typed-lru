@@ -20,8 +20,10 @@
          lru-has-key?
          lru-count
          lru-keys
+         lru-items
          lru-ref
-         lru-set!)
+         lru-set!
+         lru-remove!)
 
 
 ;; Elements will be doubly-linked:
@@ -117,6 +119,18 @@
            (unlink! an-lru last-elt))]))
 
 
+(: lru-remove! (All (K V) ((Lru K V) K -> Void)))
+;; Remove a binding from the LRU.
+(define (lru-remove! an-lru a-key)
+  (define ht (Lru-ht an-lru))
+  (cond [(hash-has-key? ht a-key)
+         (define elt (hash-ref ht a-key))
+         (hash-remove! ht (Element-key elt))
+         (unlink! an-lru elt)]
+        [else
+         (void)]))
+
+
 (: lru-keys (All (K V) ((Lru K V) -> (Listof K))))
 ;; Collects a list of the keys in the lru, in order of most recently used.
 (define (lru-keys a-lru)
@@ -126,6 +140,19 @@
        '()]
       [(Element? elt)
        (cons (Element-key elt)
+             (loop (Element-next elt)))])))
+
+
+(: lru-items (All (K V) ((Lru K V) -> (Listof (Pair K V)))))
+;; Collects a list of the items in the lru, in order of most recently used.
+(define (lru-items a-lru)
+  (let loop ([elt (Lru-first-elt a-lru)])
+    (cond
+      [(eq? elt #f)
+       '()]
+      [(Element? elt)
+       (cons (cons (Element-key elt)
+                   (Element-val elt))
              (loop (Element-next elt)))])))
   
 
