@@ -99,10 +99,8 @@
          (set-Element-val! elt a-val)
          (move-to-front! an-lru elt)]
         [else
-         ;; Linkage to the doubly-linked list:
+         ;; Linkage to the doubly-linked list and mapping.
          (define elt (insert-first! an-lru a-key a-val))
-
-         ;; Followed by the key-value mapping:
          (hash-set! ht a-key elt)
          
          ;; If over capacity, drop the last element.
@@ -119,8 +117,8 @@
   (define ht (Lru-ht an-lru))
   (cond [(hash-has-key? ht a-key)
          (define elt (hash-ref ht a-key))
-         (hash-remove! ht (Element-key elt))
-         (unlink! an-lru elt)]
+         (unlink! an-lru elt)
+         (hash-remove! ht (Element-key elt))]
         [else
          (void)]))
 
