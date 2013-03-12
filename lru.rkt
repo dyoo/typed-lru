@@ -100,13 +100,7 @@
          (move-to-front! an-lru elt)]
         [else
          ;; Linkage to the doubly-linked list:
-         (define prior-first-elt (Lru-first-elt an-lru))
-         (define elt (Element a-key a-val #f (Lru-first-elt an-lru)))
-         (when (Element? prior-first-elt)
-           (set-Element-prev! prior-first-elt elt))
-         (set-Lru-first-elt! an-lru elt)
-         (when (eq? #f (Lru-last-elt an-lru))
-           (set-Lru-last-elt! an-lru elt))
+         (define elt (insert-first! an-lru a-key a-val))
 
          ;; Followed by the key-value mapping:
          (hash-set! ht a-key elt)
@@ -201,3 +195,16 @@
     (set-Element-next! prev next))
   (when (Element? next)
     (set-Element-prev! next prev)))
+
+
+(: insert-first! (All (K V) ((Lru K V) K V -> (Element K V))))
+;; Internal: insert an element value into the linked list.
+(define (insert-first! an-lru a-key a-val)
+  (define elt (Element a-key a-val #f (Lru-first-elt an-lru)))
+  (define prior-first-elt (Lru-first-elt an-lru))
+  (when (Element? prior-first-elt)
+    (set-Element-prev! prior-first-elt elt))
+  (set-Lru-first-elt! an-lru elt)
+  (when (eq? #f (Lru-last-elt an-lru))
+    (set-Lru-last-elt! an-lru elt))
+  elt)
