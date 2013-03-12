@@ -32,8 +32,7 @@
                         [prev : (U #f (Element K V))]
                         [next : (U #f (Element K V))])
 
-  #:mutable 
-  #:transparent)
+  #:mutable)
 
 
 ;; The LRU will have a capacity, as well as the map from keys to elements.
@@ -43,8 +42,7 @@
                     [ht : (HashTable K (Element K V))]
                     [first-elt : (U #f (Element K V))]
                     [last-elt : (U #f (Element K V))])
-  #:mutable
-  #:transparent)
+  #:mutable)
 
 
 (: -make-lru (All (K V) (Natural -> (Lru K V))))
