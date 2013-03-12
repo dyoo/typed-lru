@@ -115,6 +115,15 @@
 (define (brute-items a-lru)
   (brute-lru-elts a-lru))
 
+(: brute-has-key? (All (K V) ((brute-lru K V) K -> Boolean)))
+(define (brute-has-key? a-lru k)
+  (and (assoc k (brute-lru-elts a-lru))
+       #t))
+
+(: brute-count (All (K V) ((brute-lru K V) -> Natural)))
+(define (brute-count a-lru)
+  (length (brute-lru-elts a-lru)))
+
 
 (: fuzz-keys (Listof String))
 (define fuzz-keys (build-list 10 (lambda (i) (format "key~a" i))))
@@ -136,11 +145,13 @@
     (and (equal? (lru-keys a-lru)
                  (brute-keys b-lru))
          (equal? (lru-items a-lru)
-                 (brute-items b-lru))))
+                 (brute-items b-lru))
+         (equal? (lru-count a-lru)
+                 (brute-count b-lru))))
   
   (for ([i 100])
     (check-true (same?))
-    (case (random-choice '(set get rem))
+    (case (random-choice '(set get rem has-key))
       [(set)
        (define k (random-choice fuzz-keys))
        (define v (random-choice fuzz-vals))
@@ -154,6 +165,10 @@
        (define k (random-choice fuzz-keys))
        (lru-remove! a-lru k)
        (brute-remove! b-lru k)]
+      [(has-key)
+       (define k (random-choice fuzz-keys))
+       (check-equal? (lru-has-key? a-lru k)
+                     (brute-has-key? b-lru k))]
       [else
        (error 'huh?)])))
 
