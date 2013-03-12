@@ -4,18 +4,22 @@
 ;;
 ;; Danny Yoo (dyoo@hashcollision.org)
 ;;
-;; A fairly straightforward implementation: we keep a hashtable to map
+;; A fairly direct implementation of an LRU cache.  We keep a hashtable from
 ;; keys to elements.  The elements themselves are linked together as a
-;; doubly-linked list, to enable fast arbitrary insertion and deletion,
-;; as required for implementing an LRU cache.
+;; doubly-linked list, to enable the fast arbitrary insertion and deletion
+;; required for an LRU.
 ;;
-;; Not thread-safe.
+;; This library is not thread-safe; if you need it to be, wrap your own
+;; synchronization over its operations.
 
 (provide (rename-out [-make-lru make-lru]
                      [-make-lru-eq make-lru-eq]
-                     [Lru? lru?])
+                     [Lru? lru?]
+                     [Lru-cap lru-cap])
          Lru
          lru-has-key?
+         lru-count
+         lru-keys
          lru-ref
          lru-set!)
 
@@ -32,7 +36,7 @@
 
 ;; The LRU will have a capacity, as well as the map from keys to elements.
 ;; It also holds references to the first and last element, to implement
-;; the LRU policies.
+;; the LRU policy.
 (struct: (K V) Lru ([cap : Natural]
                     [ht : (HashTable K (Element K V))]
                     [first-elt : (U #f (Element K V))]
@@ -62,6 +66,11 @@
 (define (lru-has-key? an-lru a-key)
   (hash-has-key? (Lru-ht an-lru) a-key))
 
+
+(: lru-count (All (K V) ((Lru K V) -> Natural)))
+;; Returns the number of elements in the LRU.
+(define (lru-count a-lru)
+  (hash-count (Lru-ht a-lru)))
 
 
 (: lru-ref (All (K V F) ((Lru K V) K (-> F) -> (U V F))))
@@ -107,6 +116,18 @@
            (hash-remove! ht (Element-key last-elt))
            (unlink! an-lru last-elt))]))
 
+
+(: lru-keys (All (K V) ((Lru K V) -> (Listof K))))
+;; Collects a list of the keys in the lru, in order of most recently used.
+(define (lru-keys a-lru)
+  (let loop ([elt (Lru-first-elt a-lru)])
+    (cond
+      [(eq? elt #f)
+       '()]
+      [(Element? elt)
+       (cons (Element-key elt)
+             (loop (Element-next elt)))])))
+  
 
 
 ;; Internal: put the element an-elt at the front of the lru.
