@@ -107,8 +107,8 @@
          (define last-elt (Lru-last-elt an-lru))
          (when (and (Element? last-elt)
                     (> (hash-count ht) (Lru-cap an-lru)))
-           (hash-remove! ht (Element-key last-elt))
-           (unlink! an-lru last-elt))]))
+           (unlink! an-lru last-elt)
+           (hash-remove! ht (Element-key last-elt)))]))
 
 
 (: lru-remove! (All (K V) ((Lru K V) K -> Void)))
